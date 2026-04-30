@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "ds18d20.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -94,7 +94,9 @@ int main(void)
   MX_TIM2_Init();
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
-
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
+  DS18B20_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -104,6 +106,8 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	  float temp = DS18B20_ReadTemp();
+	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
