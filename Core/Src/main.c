@@ -27,6 +27,7 @@
 /* USER CODE BEGIN Includes */
 #include "ds18d20.h"
 #include <stdio.h>
+#include "encoder.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -98,7 +99,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
   DS18B20_Init();
-
+  Encoder_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -109,8 +110,8 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  float temp = DS18B20_ReadTemp();
-	  printf("T=%.2f\r\n",temp);
-	  HAL_Delay(1000);
+	  float setpoint = Encoder_GetSetpoint();
+	  printf("T=%.2f SP=%.2f\r\n", temp, setpoint);	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
