@@ -26,6 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ds18d20.h"
+#include <stdio.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -97,6 +98,7 @@ int main(void)
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
   DS18B20_Init();
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -107,6 +109,7 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  float temp = DS18B20_ReadTemp();
+	  printf("T=%.2f\r\n",temp);
 	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
@@ -163,7 +166,10 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-
+int __io_putchar(int ch){
+	HAL_UART_Transmit(&huart2,(uint8_t *)&ch, 1, 100);
+	return ch;
+}
 /* USER CODE END 4 */
 
 /**
