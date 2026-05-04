@@ -1,4 +1,4 @@
-#include "ds18d20.h""
+#include "ds18b20.h"
 #include "tim.h"
 
 static void delay_us(uint16_t us)

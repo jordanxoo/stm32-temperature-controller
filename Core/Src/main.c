@@ -17,17 +17,19 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
+#include <ds18b20.h>
 #include "main.h"
 #include "i2c.h"
+#include "spi.h"
 #include "tim.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ds18d20.h"
 #include <stdio.h>
 #include "encoder.h"
+#include "thermostat.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,11 +97,13 @@ int main(void)
   MX_TIM1_Init();
   MX_TIM2_Init();
   MX_USART2_UART_Init();
+  MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
   DS18B20_Init();
   Encoder_Init();
+  Thermostat_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -111,7 +115,21 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  float temp = DS18B20_ReadTemp();
 	  float setpoint = Encoder_GetSetpoint();
-	  printf("T=%.2f SP=%.2f\r\n", temp, setpoint);	  HAL_Delay(1000);
+	  Thermostat_Update(temp, setpoint);
+
+	  ThermoState_t state = Thermostat_GetState();
+	  const char* state_str;
+	  switch(state)
+	  {
+	      case THERMO_IDLE:     state_str = "IDLE";     break;
+	      case THERMO_FAN_ON:   state_str = "FAN_ON";   break;
+	      case THERMO_COOLDOWN: state_str = "COOLDOWN"; break;
+	      default:              state_str = "UNKNOWN";  break;
+	  }
+
+	  printf("T=%.2f SP=%.2f PWM=%d STATE=%s\r\n",
+	         temp, setpoint, Thermostat_GetPWM(), state_str);
+	  HAL_Delay(1000);
   }
   /* USER CODE END 3 */
 }
