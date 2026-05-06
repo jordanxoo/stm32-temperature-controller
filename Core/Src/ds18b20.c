@@ -1,51 +1,59 @@
 #include "ds18b20.h"
 #include "tim.h"
+#include <stdio.h>
 
 static void delay_us(uint16_t us)
 {
-    __HAL_TIM_SET_COUNTER(&htim2, 0);
-    HAL_TIM_Base_Start(&htim2);
-    while(__HAL_TIM_GET_COUNTER(&htim2) < us);
+    uint32_t start = DWT->CYCCNT;
+    uint32_t cycles = (uint32_t)us * (SystemCoreClock / 1000000U);
+    while ((DWT->CYCCNT - start) < cycles);
 }
 
 static uint8_t DS18B20_Reset(void)
 {
     uint8_t presence;
+    __disable_irq();
     HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_RESET);
     delay_us(480);
     HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_SET);
     delay_us(70);
     presence = HAL_GPIO_ReadPin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN);
     delay_us(410);
+    __enable_irq();
     return presence;
 }
 
 static void DS18B20_WriteBit(uint8_t bit)
 {
-    HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_RESET);
+    __disable_irq();
     if(bit)
     {
-        delay_us(1);
+        HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_RESET);
+        delay_us(5);
         HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_SET);
-        delay_us(59);
+        delay_us(58);
     }
     else
     {
-        delay_us(60);
+        HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_RESET);
+        delay_us(62);
         HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_SET);
-        delay_us(1);
+        delay_us(2);
     }
+    __enable_irq();
 }
 
 static uint8_t DS18B20_ReadBit(void)
 {
     uint8_t bit;
+    __disable_irq();
     HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_RESET);
-    delay_us(1);
+    delay_us(2);
     HAL_GPIO_WritePin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN, GPIO_PIN_SET);
-    delay_us(14);
+    delay_us(10);
     bit = HAL_GPIO_ReadPin(DS18B20_GPIO_PORT, DS18B20_GPIO_PIN);
-    delay_us(45);
+    delay_us(50);
+    __enable_irq();
     return bit;
 }
 
@@ -72,29 +80,39 @@ static uint8_t DS18B20_ReadByte(void)
 
 uint8_t DS18B20_Init(void)
 {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
     return DS18B20_Reset();
 }
 
 float DS18B20_ReadTemp(void)
 {
-    uint8_t byte1, byte2;
+    uint8_t b[4], presence1, presence2;
     int16_t raw;
-    float temp;
 
-    DS18B20_Reset();
+    presence1 = DS18B20_Reset();
+    if(presence1 != 0)
+    {
+        printf("NOT FOUND\r\n");
+        return -999.0f;
+    }
+
     DS18B20_WriteByte(0xCC);
     DS18B20_WriteByte(0x44);
-    HAL_Delay(750);
+    HAL_Delay(800);
 
-    DS18B20_Reset();
+    presence2 = DS18B20_Reset();
     DS18B20_WriteByte(0xCC);
     DS18B20_WriteByte(0xBE);
 
-    byte1 = DS18B20_ReadByte();
-    byte2 = DS18B20_ReadByte();
+    b[0] = DS18B20_ReadByte();
+    b[1] = DS18B20_ReadByte();
+    b[2] = DS18B20_ReadByte();
+    b[3] = DS18B20_ReadByte();
 
-    raw = (int16_t)((byte2 << 8) | byte1);
-    temp = (float)raw * 0.0625f;
+    (void)presence2;
 
-    return temp;
+    raw = (int16_t)((b[1] << 8) | b[0]);
+    return (float)raw * 0.0625f;
 }

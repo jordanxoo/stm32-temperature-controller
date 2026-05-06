@@ -16,9 +16,10 @@ typedef enum {
 	THERMO_COOLDOWN
 } ThermoState_t;
 
-void ThermostatInit(void);
+void Thermostat_Init(void);
 void Thermostat_Update(float temperature, float setpoint);
 ThermoState_t Thermostat_GetState(void);
 uint8_t Thermostat_GetPWM(void);
+void Thermostat_SetPWM(uint8_t percent);
 
 #endif

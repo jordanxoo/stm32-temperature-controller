@@ -26,6 +26,15 @@ void Thermostat_Init(void){
 	Fan_Off();
 }
 
+static uint8_t CalcPWM(float temperature, float setpoint)
+{
+	float diff = temperature - setpoint;
+	int pwm = (int)(diff * 20.0f);
+	if(pwm < 30) pwm = 30;
+	if(pwm > 100) pwm = 100;
+	return (uint8_t)pwm;
+}
+
 void Thermostat_Update(float temperature, float setpoint){
 	uint32_t now = HAL_GetTick();
 
@@ -36,13 +45,27 @@ void Thermostat_Update(float temperature, float setpoint){
 		{
 			state = THERMO_FAN_ON;
 			state_start_ms = now;
+			pwm_percent = CalcPWM(temperature, setpoint);
 			Fan_SetPWN(pwm_percent);
 		}
+		break;
+
 	case THERMO_FAN_ON:
-		if((now - state_start_ms) >= FAN_ON_TIME_MS){
+		if(temperature <= setpoint)
+		{
+			state = THERMO_IDLE;
+			Fan_Off();
+		}
+		else if((now - state_start_ms) >= FAN_ON_TIME_MS)
+		{
 			state = THERMO_COOLDOWN;
 			state_start_ms = now;
 			Fan_Off();
+		}
+		else
+		{
+			pwm_percent = CalcPWM(temperature, setpoint);
+			Fan_SetPWN(pwm_percent);
 		}
 		break;
 
@@ -60,6 +83,12 @@ ThermoState_t Thermostat_GetState(void){
 
 uint8_t Thermostat_GetPWM(void){
 	return pwm_percent;
+}
+
+void Thermostat_SetPWM(uint8_t percent){
+	pwm_percent = percent;
+	if(state == THERMO_FAN_ON)
+		Fan_SetPWN(pwm_percent);
 }
 
 

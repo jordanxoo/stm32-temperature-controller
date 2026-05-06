@@ -17,8 +17,8 @@
   */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
-#include <ds18b20.h>
 #include "main.h"
+#include "adc.h"
 #include "i2c.h"
 #include "spi.h"
 #include "tim.h"
@@ -28,8 +28,11 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include <string.h>
+#include "ds18b20.h"
 #include "encoder.h"
 #include "thermostat.h"
+#include "st7735.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -61,7 +64,27 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+static uint8_t ADC_ReadPWM(void)
+{
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 10);
+    uint32_t val = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
+    return (uint8_t)(val * 100 / 4095);
+}
 
+static void Display_Update(float temp, float setpoint, uint8_t pwm, const char* state_str)
+{
+    char buf[22];
+    sprintf(buf, "Temp: %5.1f C  ", temp);
+    ST7735_WriteString(5, 10, buf, Font_7x10, ST7735_WHITE, ST7735_BLACK);
+    sprintf(buf, "Set:  %5.1f C  ", setpoint);
+    ST7735_WriteString(5, 30, buf, Font_7x10, ST7735_WHITE, ST7735_BLACK);
+    sprintf(buf, "PWM:    %3d %%  ", pwm);
+    ST7735_WriteString(5, 50, buf, Font_7x10, ST7735_WHITE, ST7735_BLACK);
+    sprintf(buf, "Stan: %-8s", state_str);
+    ST7735_WriteString(5, 70, buf, Font_7x10, ST7735_WHITE, ST7735_BLACK);
+}
 /* USER CODE END 0 */
 
 /**
@@ -98,12 +121,16 @@ int main(void)
   MX_TIM2_Init();
   MX_USART2_UART_Init();
   MX_SPI1_Init();
+  MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
   __HAL_TIM_SET_COMPARE(&htim1,TIM_CHANNEL_1,0);
+  //HAL_ADCEx_Calibration_Start(&hadc1, ADC_SINGLE_ENDED);
   DS18B20_Init();
   Encoder_Init();
   Thermostat_Init();
+  ST7735_Init();
+  ST7735_FillScreen(ST7735_BLACK);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -115,9 +142,14 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  float temp = DS18B20_ReadTemp();
 	  float setpoint = Encoder_GetSetpoint();
+	  //uint8_t pwm = ADC_ReadPWM();
+	  //Thermostat_SetPWM(pwm);
 	  Thermostat_Update(temp, setpoint);
 
 	  ThermoState_t state = Thermostat_GetState();
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, state == THERMO_COOLDOWN ? GPIO_PIN_RESET : GPIO_PIN_SET); // R
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_1, state == THERMO_FAN_ON  ? GPIO_PIN_RESET : GPIO_PIN_SET); // G
+	  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_3, state == THERMO_IDLE    ? GPIO_PIN_RESET : GPIO_PIN_SET); // B
 	  const char* state_str;
 	  switch(state)
 	  {
@@ -127,9 +159,14 @@ int main(void)
 	      default:              state_str = "UNKNOWN";  break;
 	  }
 
-	  printf("T=%.2f SP=%.2f PWM=%d STATE=%s\r\n",
-	         temp, setpoint, Thermostat_GetPWM(), state_str);
-	  HAL_Delay(1000);
+	  Display_Update(temp, setpoint, Thermostat_GetPWM(), state_str);
+
+	  char uart_buf[64];
+	  int uart_len = snprintf(uart_buf, sizeof(uart_buf), "T=%.2f SP=%.2f PWM=%d STATE=%s\r\n",
+	                          temp, setpoint, Thermostat_GetPWM(), state_str);
+	  HAL_UART_Transmit(&huart2, (uint8_t*)uart_buf, uart_len, 200);
+
+	  HAL_Delay(500);
   }
   /* USER CODE END 3 */
 }

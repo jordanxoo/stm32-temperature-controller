@@ -57,19 +57,24 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define CS_Pin GPIO_PIN_0
-#define CS_GPIO_Port GPIOC
-#define DS_Pin GPIO_PIN_1
-#define DS_GPIO_Port GPIOC
+#define ST7735_CS_Pin GPIO_PIN_0
+#define ST7735_CS_GPIO_Port GPIOC
+#define ST7735_DC_Pin GPIO_PIN_1
+#define ST7735_DC_GPIO_Port GPIOC
 #define RST_Pin GPIO_PIN_2
 #define RST_GPIO_Port GPIOC
-#define BL_Pin GPIO_PIN_3
-#define BL_GPIO_Port GPIOC
+#define ST7735_BL_Pin GPIO_PIN_3
+#define ST7735_BL_GPIO_Port GPIOC
 #define DS18B20_Pin GPIO_PIN_0
 #define DS18B20_GPIO_Port GPIOA
+#define LED_G_Pin GPIO_PIN_1
+#define LED_G_GPIO_Port GPIOB
+#define LED_B_Pin GPIO_PIN_3
+#define LED_B_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
-
+#define LED_R_Pin GPIO_PIN_0
+#define LED_R_GPIO_Port GPIOB
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
